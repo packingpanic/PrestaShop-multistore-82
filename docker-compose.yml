@@ -1,36 +1,32 @@
-version: '2.1'
+# sepcial network, so we can fix the IP
+networks:
+  special:
+    ipam:
+      config:
+        - subnet: ${PS_NETWORK:-10.76.82.0/24}
 
 volumes:
   db-data:
-  vendor:
-  var:
+  shop-composer-dir-cache:
+  shop-npm-dir-cache:
 
 services:
   mysql:
     image: mysql:5
     platform: linux/amd64
-    ports:
-      - "3306"
     volumes:
       - db-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: prestashop
       MYSQL_DATABASE: prestashop
-    restart: always
-  keycloak:
-    image: quay.io/keycloak/keycloak:19.0.3
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-    command:
-      - start-dev
-    ports:
-      - "8003:8080"
+    networks:
+      - special
+
   prestashop-git:
     hostname: ${PS_HOSTNAME:-localhost}
     build:
       dockerfile: .docker/Dockerfile
-      context: .
+      context: ./PrestaShop/
       args:
         - VERSION=${VERSION:-8.1-apache}
         - USER_ID=${USER_ID:-1000}
@@ -43,22 +39,25 @@ services:
       DB_NAME: ${DB_NAME:-prestashop}
       DB_SERVER: ${DB_SERVER:-mysql}
       DB_PREFIX: ${DB_PREFIX:-ps_}
-      PS_DOMAIN: ${PS_DOMAIN:-localhost:8001}
+      PS_DOMAIN: ${PS_DOMAIN:-ps82.packingpanic.com}
       PS_FOLDER_INSTALL: ${PS_FOLDER_INSTALL:-install-dev}
       PS_FOLDER_ADMIN: ${PS_FOLDER_ADMIN:-admin-dev}
-      PS_COUNTRY: ${PS_COUNTRY:-fr}
-      PS_LANGUAGE: ${PS_LANGUAGE:-fr}
+      PS_COUNTRY: ${PS_COUNTRY:-de}
+      PS_LANGUAGE: ${PS_LANGUAGE:-en}
       PS_DEV_MODE: ${PS_DEV_MODE:-1}
       PS_ENABLE_SSL: ${PS_ENABLE_SSL:-0}
       PS_ERASE_DB: ${PS_ERASE_DB:-0}
       ADMIN_MAIL: ${ADMIN_MAIL:-demo@prestashop.com}
       ADMIN_PASSWD: ${ADMIN_PASSWD:-Correct Horse Battery Staple}
     command: ["/tmp/wait-for-it.sh", "--timeout=60", "--strict", "mysql:3306", "--", "/tmp/docker_run_git.sh"]
-    ports:
-      - "8001:80"
-      - "8002:443"
     depends_on:
       - mysql
-      - keycloak
     volumes:
-      - ./:/var/www/html:delegated
+      - ./PrestaShop:/var/www/html
+      # make npm and composer directories persistent, so we don't download packages
+      # again if we do a reinstall
+      - shop-composer-dir-cache:/var/www/.composer
+      - shop-npm-dir-cache:/var/www/.npm
+    networks:
+      special:
+        ipv4_address: ${PS_IP:-10.76.82.254}
