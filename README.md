@@ -20,7 +20,7 @@ its best to have a clone of the PrestaShop git repository at ../PrestaShop.
 if test -d ../PrestaShop; then
   cp -a ../PrestaShop .
 else
-  git clone 
+  git clone https://github.com/PrestaShop/PrestaShop.git
 fi
 ( cd PrestaShop; git clean -xfd; git checkout 8.2.1 )
 ````
@@ -72,7 +72,7 @@ This sequence only removes the database volume and keeps the other volumes
 which are actiing as cache for the npm and composer artifact downloads.
 
 ```
-docker composer down
+docker compose down
 docker volume rm $(basename $PWD | tr '[:upper:]' '[:lower:]')_db-data
 ( cd PrestaShop; git clean -xfd )
 docker compose up -d
